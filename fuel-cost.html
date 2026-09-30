@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fuel cost calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F3; --surface:#FFFFFF; --ink:#1F2A33; --muted:#5B6B78; --line:#CBD3D9;
+  --frame:#1F2A33; --lcd:#CFDCC0; --lcd-ink:#1E2B17; --lcd-dim:#56674A;
+  --accent:#1F6F8B; --accent-ink:#FFFFFF; --focus:#1F6F8B;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181D; --surface:#1B232A; --ink:#E4EAEE; --muted:#93A2AE; --line:#2E3A44;
+    --frame:#2A363F; --lcd:#A8B899; --lcd-ink:#141C0F; --lcd-dim:#3F4D35;
+    --accent:#5AB0CC; --accent-ink:#0E1A20; --focus:#5AB0CC;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181D; --surface:#1B232A; --ink:#E4EAEE; --muted:#93A2AE; --line:#2E3A44;
+  --frame:#2A363F; --lcd:#A8B899; --lcd-ink:#141C0F; --lcd-dim:#3F4D35;
+  --accent:#5AB0CC; --accent-ink:#0E1A20; --focus:#5AB0CC;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:1rem; line-height:1.45;
+}
+main{max-width:30rem; margin:0 auto; padding:2rem 1.25rem 3rem}
+h1{
+  font-family:"Barlow Semi Condensed","Barlow",system-ui,sans-serif;
+  font-weight:600; font-size:1.75rem; line-height:1.1; margin:0 0 .25rem;
+}
+.sub{color:var(--muted); margin:0 0 1.5rem}
+
+/* Dispenser readout */
+.pump{background:var(--frame); border-radius:14px; padding:.75rem}
+.lcd{
+  background:var(--lcd); color:var(--lcd-ink); border-radius:6px;
+  padding:.9rem 1rem .8rem;
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.22);
+  font-variant-numeric:tabular-nums;
+}
+.row{display:flex; justify-content:space-between; align-items:baseline; gap:1rem}
+.row + .row{border-top:1px solid rgba(30,43,23,.18); margin-top:.45rem; padding-top:.45rem}
+.lbl{font-size:.875rem; font-weight:500; color:var(--lcd-dim)}
+.val{font-family:"Barlow Semi Condensed","Barlow",system-ui,sans-serif; font-weight:600; font-size:1.5rem; line-height:1}
+.row.sale .val{font-size:clamp(2.5rem,12vw,3.5rem)}
+.pump-note{color:#C9D3DA; font-size:.875rem; margin:.6rem .25rem 0}
+
+.month{
+  margin:1rem 0 0; padding:.75rem 1rem;
+  border-left:3px solid var(--accent); background:var(--surface);
+  border-radius:0 6px 6px 0;
+}
+.month strong{font-weight:600}
+
+/* Form */
+fieldset{border:0; margin:0 0 1.25rem; padding:0}
+legend{font-weight:600; margin-bottom:.5rem; padding:0}
+.seg{display:flex; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:3px}
+.seg label{flex:1; position:relative}
+.seg input{position:absolute; opacity:0; inset:0; margin:0; cursor:pointer}
+.seg span{display:block; text-align:center; padding:.55rem .5rem; border-radius:6px; font-weight:500; color:var(--muted)}
+.seg input:checked + span{background:var(--accent); color:var(--accent-ink)}
+.seg input:focus-visible + span{outline:2px solid var(--focus); outline-offset:2px}
+
+.grid{margin-bottom:1.75rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr)); gap:1rem}
+.field label{display:block; font-weight:600; margin-bottom:.35rem}
+.box{
+  display:flex; align-items:center; background:var(--surface);
+  border:1px solid var(--line); border-radius:8px; overflow:hidden;
+}
+.box:focus-within{outline:2px solid var(--focus); outline-offset:1px}
+.box input{
+  flex:1; min-width:0; border:0; background:transparent; color:var(--ink);
+  font:inherit; font-size:1.125rem; padding:.6rem .75rem;
+  font-variant-numeric:tabular-nums;
+}
+.box input:focus{outline:none}
+.unit{padding:0 .75rem; color:var(--muted); font-size:.9rem; white-space:nowrap}
+</style>
+</head>
+<body>
+<main>
+  <h1>Fuel cost calculator</h1>
+  <p class="sub">What a drive costs you in petrol.</p>
+
+  <fieldset>
+    <legend>Trip</legend>
+    <div class="seg">
+      <label><input type="radio" name="trip" value="both" checked><span>Both ways (×2)</span></label>
+      <label><input type="radio" name="trip" value="one"><span>One way</span></label>
+    </div>
+  </fieldset>
+
+  <div class="grid">
+    <div class="field">
+      <label for="dist">Distance (one way)</label>
+      <div class="box"><input id="dist" type="number" inputmode="decimal" min="0" step="any" value="34"><span class="unit">km</span></div>
+    </div>
+    <div class="field">
+      <label for="mil">Mileage</label>
+      <div class="box"><input id="mil" type="number" inputmode="decimal" min="0" step="any" value="6"><span class="unit">km/l</span></div>
+    </div>
+    <div class="field">
+      <label for="price">Petrol price</label>
+      <div class="box"><input id="price" type="number" inputmode="decimal" min="0" step="any" value="120"><span class="unit">₹/l</span></div>
+    </div>
+    <div class="field">
+      <label for="days">Trips per month</label>
+      <div class="box"><input id="days" type="number" inputmode="numeric" min="0" step="1" value="8"><span class="unit">days</span></div>
+    </div>
+  </div>
+
+  <section class="pump" aria-live="polite">
+    <div class="lcd">
+      <div class="row sale"><span class="lbl">Sale ₹</span><span class="val" id="sale">—</span></div>
+      <div class="row"><span class="lbl">Litres</span><span class="val" id="litres">—</span></div>
+      <div class="row"><span class="lbl">Rate ₹/L</span><span class="val" id="rate">—</span></div>
+    </div>
+    <p class="pump-note" id="driven"></p>
+  </section>
+
+  <p class="month" id="month"></p>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const KEY = 'fuel-calc-v3';
+  const ids = ['dist','mil','price','days'];
+  const money2 = new Intl.NumberFormat('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const money0 = new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0});
+  const n = new Intl.NumberFormat('en-IN',{maximumFractionDigits:2});
+
+  // Restore saved inputs
+  try{
+    const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if(saved){
+      ids.forEach(id => { if(saved[id] != null) $(id).value = saved[id]; });
+      if(saved.trip){
+        const r = document.querySelector(`input[name="trip"][value="${saved.trip}"]`);
+        if(r) r.checked = true;
+      }
+    }
+  }catch(e){}
+
+  const read = id => { const v = parseFloat($(id).value); return Number.isFinite(v) && v >= 0 ? v : NaN; };
+
+  function calc(){
+    const trip = document.querySelector('input[name="trip"]:checked').value;
+    const d = read('dist'), m = read('mil'), p = read('price'), days = read('days');
+    const km = trip === 'both' ? d * 2 : d;
+
+    try{
+      const s = {trip}; ids.forEach(id => s[id] = $(id).value);
+      localStorage.setItem(KEY, JSON.stringify(s));
+    }catch(e){}
+
+    if(!(km >= 0) || !(m > 0) || !(p >= 0)){
+      $('sale').textContent = '—';
+      $('litres').textContent = '—';
+      $('rate').textContent = Number.isFinite(p) ? money2.format(p) : '—';
+      $('driven').textContent = !(m > 0) ? 'Enter a mileage above 0 to see the cost.' : 'Enter a distance and petrol price.';
+      $('month').textContent = '';
+      $('month').hidden = true;
+      return;
+    }
+
+    const litres = km / m;
+    const cost = litres * p;
+    $('sale').textContent = money2.format(cost);
+    $('litres').textContent = money2.format(litres);
+    $('rate').textContent = money2.format(p);
+    $('driven').textContent = `For ${n.format(km)} km of driving.`;
+
+    if(days > 0){
+      $('month').hidden = false;
+      $('month').innerHTML = `Over ${n.format(days)} trips: <strong>${money0.format(cost * days)}</strong> for ${n.format(litres * days)} L of petrol.`;
+    }else{
+      $('month').hidden = true;
+    }
+  }
+
+  document.addEventListener('input', calc);
+  calc();
+})();
+</script>
+</body>
+</html>
